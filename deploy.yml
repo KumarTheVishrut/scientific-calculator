@@ -1,0 +1,46 @@
+---
+- name: Deploy Scientific Calculator Docker Container
+  hosts: managed_hosts
+  become: yes
+
+  vars:
+    image_name: "vishruthere/scientific-calculator"
+    container_name: "scientific-calculator"
+
+  tasks:
+
+    - name: Ensure Docker is installed
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Ensure Docker service is running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Pull latest Docker image from Docker Hub
+      community.docker.docker_image:
+        name: "{{ image_name }}"
+        source: pull
+        force_source: yes
+
+    - name: Stop existing container (if running)
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        state: absent
+      ignore_errors: yes
+
+    - name: Run the calculator container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        image: "{{ image_name }}:latest"
+        state: started
+        restart_policy: always
+        interactive: yes
+        tty: yes
+        volumes:
+          - "/var/log/calculator:/app/logs"
